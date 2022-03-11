@@ -22,6 +22,7 @@ Options
 		-a 		: Update the database of vulnerabilities to latest version
 		-r 		: Enable HTTP requests with random user-agent
 		-k 		: Ignore SSL Certificate
+		-x		: Adds cookies to the request (default '')
 
 		Proxy configuration
 
