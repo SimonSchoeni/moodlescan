@@ -24,9 +24,11 @@ class httpProxy():
 	auth = ""
 
 #descarga un archivo al directorio y nombre indicado en dest
-def fileDownload(url, dest, agent):
+def fileDownload(url, dest, agent,cookie):
 	try:
 		req = Request(url)
+		if cookie != '':
+			req.add_header('cookie', cookie)
 		if len(agent) > 2:
 			req.add_header('user-agent', agent)
 
@@ -57,7 +59,7 @@ def getignoressl():
 
 
 #genera una conecion HTTP con o sin proxy, dependiendo de los parametros, adicionalmente, el proxy lo puede autenticar con NTLM o Basic
-def httpConnection(url,  proxy, agent, ignore):
+def httpConnection(url,  proxy, agent, ignore,cookie):
 	
 	if (proxy.auth == "ntlm"):
 		#todo
@@ -73,7 +75,8 @@ def httpConnection(url,  proxy, agent, ignore):
 	req = Request(url)
 	if len(agent) > 2:
 		req.add_header('user-agent', agent)
-
+	if cookie != '':
+		req.add_header('cookie', cookie)
 	if (ignore):
 		return urlopen(req,  context=ignore)
 	else:
@@ -141,9 +144,13 @@ def main():
 	parser.add_argument('-b', '--proxy-user', dest="proxu", help="User for authenticate to proxy server")
 	parser.add_argument('-c', '--proxy-pass', dest="proxp", help="Password for authenticate to proxt server")
 	parser.add_argument('-d', '--proxy-auth', dest="proxa", help="Protocol of authentication: basic or ntlm")
-	
+	parser.add_argument('-x', '--cookie', dest="cook", help="Cookie for authentication")
 
 	options = parser.parse_args()
+
+	cookie = options.cook
+	if cookie is None:
+		cookie = ''
 	if options.act:
 		checkupdate()
 
@@ -170,8 +177,8 @@ def main():
 			if (options.proxa):
 				proxy.auth = options.proxa
 
-		getheader(options.url, proxy, agent, ignore)
-		v = getversion(options.url, proxy, agent, ignore)
+		getheader(options.url, proxy, agent, ignore,cookie)
+		v = getversion(options.url, proxy, agent, ignore, cookie)
 		if v:
 			getcve(v)
 			
@@ -182,7 +189,7 @@ def update():
 	#TODO: catch HTTP errors (404, 503, timeout, etc)
 	print ("A new version of database was found, updating...")
 	urlup = "https://raw.githubusercontent.com/inc0d3/moodlescan/master/update/update.zip"
-	r = fileDownload(urlup, "data.zip", "")
+	r = fileDownload(urlup, "data.zip", "","")
 	if (r):
 			print("Error to connect with database service : " + str(r.reason) )
 			sys.exit()
@@ -205,7 +212,7 @@ def checkupdate():
 		actual = int(fo.readline())
 		fo.close()
 		
-		r = fileDownload(urlup, "update.dat", "")
+		r = fileDownload(urlup, "update.dat", "","")
 		if (r):
 			print("Error to connect with database service : " + str(r.reason) )
 			sys.exit()
@@ -231,11 +238,11 @@ def checkupdate():
 
 
 
-def getheader(url, proxy, agent, ignore):
+def getheader(url, proxy, agent, ignore, cookie):
 	print ("Getting server information " + url + " ...\n")
 	
 	try:
-		cnn = httpConnection(url, proxy, agent, ignore)
+		cnn = httpConnection(url, proxy, agent, ignore,cookie)
 		headers = ['server', 'x-powered-by', 'x-frame-options', 'x-xss-protection', 'last-modified']		
 		for el in headers:
 			if cnn.info().get(el):
@@ -250,7 +257,7 @@ def getheader(url, proxy, agent, ignore):
 		sys.exit()
 	
 
-def getversion(url, proxy, agent, ignore):
+def getversion(url, proxy, agent, ignore, cookie):
 	print ("\nGetting moodle version...")
 
 	s = [['/admin/environment.xml'], ['/composer.lock'], ['/lib/upgrade.txt'], ['/privacy/export_files/general.js'], ['/composer.json'], ['/question/upgrade.txt'], ['/admin/tool/lp/tests/behat/course_competencies.feature']]
@@ -264,7 +271,7 @@ def getversion(url, proxy, agent, ignore):
 	for a in s:		
 		#TODO: catch HTTP errors (404, 503, timeout, etc)
 		try:
-			cnn = httpConnection(url + a[0], proxy, agent, ignore)
+			cnn = httpConnection(url + a[0], proxy, agent, ignore,cookie)
 			#cnn = urllib.request.urlopen()
 			cnt = cnn.read()
 			s[i].append(hashlib.md5(cnt).hexdigest())
@@ -372,11 +379,4 @@ def printcve(cve):
 
 if __name__ == "__main__":
 	main()
-
-
-
-
-
-
-
 
